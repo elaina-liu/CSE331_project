@@ -56,7 +56,7 @@ public class Solution {
             double[] inf = new double[]{c.id, paths_length * c.alpha, c.payment };
             Client_information.add(inf);
         }
-        HashMap<Integer,ArrayList<Integer>> BAND_WIDTH = band_width(sol.paths);
+        HashMap<Integer,ArrayList<double[]>> BAND_WIDTH = band_width(sol.paths);
         PriorityQueue<int[]> TheQueue = new PriorityQueue<>(new Comparator<int[]>() {
             @Override
             public int compare(int[] o1, int[] o2) {
@@ -64,19 +64,16 @@ public class Solution {
                 else return -1;
             }
         });
-
         for(int k: BAND_WIDTH.keySet()){
             TheQueue.add(new int[]{k, bandwidths.get(k)});
         }
-
+        int sum = 0;
         while(!TheQueue.isEmpty()){
             Client_information.clear();
             int band_node = TheQueue.poll()[0];
-            ArrayList<Integer> clients_nodes =BAND_WIDTH.get(band_node);
-            for(int c : clients_nodes){
-                float Delay = clients.get(c).alpha;
-                int path_length = sol.paths.get(c).size();
-                Client_information.add(new double[]{c,(Delay*path_length),clients.get(c).payment});
+            ArrayList<double[]> clients_nodes =BAND_WIDTH.get(band_node);
+            for(double[] c : clients_nodes){
+                Client_information.add(c);
             }
             int band_node_width = bandwidths.get(band_node);
             int i = 0;
@@ -85,32 +82,32 @@ public class Solution {
                 i++;
                 if(i > band_node_width){
                     ArrayList<Integer> client_path = convert_path((int)client_info[0],provider,sol.paths.get((int)client_info[0]));
+                    if(client_path.isEmpty()) {
+                        sum++;
+                    }
                     if(!client_path.isEmpty()) sol.paths.put((int)client_info[0], client_path);
                 }
-                int id =(int)client_info[0];
             }
         }
+        System.out.println(sum);
         //remove the unexplored clients, get all the nodes in the id_bandwidth map
         return sol;
     }
 
-    private HashMap<Integer, ArrayList<Integer>> band_width(HashMap<Integer, ArrayList<Integer>> paths) {
-
-        HashMap<Integer, ArrayList<Integer>> ret = new HashMap<Integer, ArrayList<Integer>>();
-        ArrayList<Integer> containsNode = new ArrayList<Integer>();
-        for(Map.Entry<Integer, ArrayList<Integer>> entry : paths.entrySet()){
-            int node = entry.getValue().get(1);
+    private HashMap<Integer, ArrayList<double[]>> band_width(HashMap<Integer, ArrayList<Integer>> paths) {
+        HashMap<Integer, ArrayList<double[]>> ret = new HashMap<Integer, ArrayList<double[]>>();
+        for(Client c: clients){
+            int node = paths.get(c.id).get(1);
+            double[] ID = new double[]{c.id, (paths.get(c.id).size()*c.alpha), c.payment  };
             if(ret.containsKey(node)){
-                ArrayList<Integer> a = ret.get(node);
-                a.add(entry.getKey());
+                ArrayList<double[]> a = ret.get(node);
+                a.add(ID);
                 ret.put(node,a);
             }
             else{
-                ret.put(node, new ArrayList<>(){
-                    {
-                        entry.getKey();
-                    }
-                });
+                ArrayList<double[]> a = new ArrayList<>();
+                a.add(ID);
+                ret.put(node, a);
             }
         }
         return ret;
@@ -152,7 +149,7 @@ public class Solution {
                         if(check_through(paths, level, a_nodes))
                         {
                             queue.add(a_nodes);
-                            priors[a_nodes] =  level+1;
+                            priors[a_nodes] = level+1;
                             ArrayList<Integer> new_node_path = new ArrayList<>(nodes_path);
                             new_node_path.add(a_nodes);
                             new_path.put(a_nodes, new_node_path);
@@ -169,7 +166,8 @@ public class Solution {
         if(level < paths.size()-1){
             int band1 = bandwidths.get(a_nodes);
             int band2 = bandwidths.get(paths.get(level));
-            if(band1<=band2) return false;
+            if(band1 <= band2) return false;
+            //if(paths.get(1) == level) return false;
         }
         return true;
     }
